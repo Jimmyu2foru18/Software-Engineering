@@ -1,0 +1,194 @@
+int screenState = 0;
+int score = 0;
+int highScore = 0;
+String playerName = "";
+ArrayList<String> highScores = new ArrayList<String>();
+
+float rabbitX, rabbitY, rabbitSpeedY;
+float platformWidth = 60;
+ArrayList<Platform> platforms = new ArrayList<Platform>();
+String inputText = "";
+boolean left, right;
+
+void setup() {
+  size(400, 600);
+  resetGame();
+}
+
+void draw() {
+  background(135, 206, 250);
+  
+  if (screenState == 0) {
+    drawStartScreen();
+  } else if (screenState == 1) {
+    updateGame();
+    drawGame();
+  } else if (screenState == 2) {
+    drawGameOver();
+  }
+}
+
+void drawStartScreen() {
+  fill(0);
+  textAlign(CENTER);
+  textSize(32);
+  text("Carrot Quest!", width / 2, height / 2 - 80);
+  
+  textSize(16);
+  text("Press Space to Begin", width / 2, height / 2 - 40);
+  
+  textSize(14);
+  text("Climb as high as you can!", width / 2, height / 2);
+  text("Avoid falling! Collect carrots for points.", width / 2, height / 2 + 20);
+  text("Use left/right arrows to move, space to jump.", width / 2, height / 2 + 40);
+  text("Enter your name after losing to save your score.", width / 2, height / 2 + 60);
+}
+
+void updateGame() {
+  rabbitSpeedY += 0.1;
+  rabbitY += rabbitSpeedY;
+
+  if (left) rabbitX -= 5;
+  if (right) rabbitX += 5;
+
+  if (rabbitX < 0) rabbitX = width;
+  if (rabbitX > width) rabbitX = 0;
+
+  for (int i = platforms.size() - 1; i >= 0; i--) {
+    Platform p = platforms.get(i);
+    if (rabbitY + 15 >= p.y && rabbitY + 15 <= p.y + 10 && rabbitX > p.x && rabbitX < p.x + platformWidth) {
+      rabbitSpeedY = -8;
+      score += p.powerUpValue;
+      platforms.remove(i);
+    }
+    p.y += 5;
+    if (p.y > height) platforms.remove(i);
+  }
+  
+  if (platforms.size() < 8) {
+    int numPlatforms = (int) random(1, 4); 
+    for (int i = 0; i < numPlatforms; i++) {
+      float newY = random(max(0, height - 400), height - 20);
+      platforms.add(new Platform(random(0, width - numPlatforms), newY));
+    }
+  }
+
+  if (rabbitY > height) {
+    screenState = 2;
+    if (score > highScore) {
+      highScore = score;
+      highScores.add(playerName + ": " + score);
+      sortHighScores();
+    }
+  }
+}
+
+void drawGame() {
+  fill(255, 0, 0);
+  ellipse(rabbitX, rabbitY, 30, 30);
+  
+  for (Platform p : platforms) {
+    fill(0, 255, 0);
+    rect(p.x, p.y, platformWidth, 10);
+  }
+
+  fill(0);
+  textSize(16);
+  text("Score: " + score, 10, 20);
+  text("High Score: " + highScore, 10, 40);
+}
+
+void drawGameOver() {
+  fill(0);
+  textAlign(CENTER);
+  textSize(32);
+  text("Game Over!", width / 2, height / 2 - 60);
+  
+  textSize(16);
+  text("Final Score: " + score, width / 2, height / 2 - 20);
+  
+  text("Enter your name to save your score:", width / 2, height / 2 + 20);
+  
+  fill(255);
+  rect(width / 2 - 100, height / 2 + 40, 200, 30);
+  
+  fill(0);
+  textSize(16);
+  text(inputText, width / 2, height / 2 + 60);
+  
+  text("Press Space to Restart", width / 2, height / 2 + 80);
+  
+  text("High Scores:", width / 2, height / 2 + 110);
+  for (int i = 0; i < min(10, highScores.size()); i++) {
+    text(highScores.get(i), width / 2, height / 2 + 130 + i * 20);
+  }
+}
+
+void keyPressed() {
+  if (screenState == 0) {
+    if (key == ' ') {
+      screenState = 1;
+      resetGame();
+    }
+  } else if (screenState == 1) {
+    if (keyCode == LEFT) left = true;
+    if (keyCode == RIGHT) right = true;
+    if (key == ' ' && rabbitY >= height - 30) {
+      rabbitSpeedY = -8;
+    }
+  } else if (screenState == 2) {
+    if (key == BACKSPACE) {
+      if (inputText.length() > 0) {
+        inputText = inputText.substring(0, inputText.length() - 1);
+      }
+    } else if (key != ENTER && key != RETURN) {
+      inputText += key;
+    } else if (key == ENTER || key == RETURN) {
+      if (inputText.length() > 0) {
+        playerName = inputText;
+        screenState = 0;
+      }
+    } else if (key == ' ') {
+      screenState = 1;
+      inputText = "";
+      resetGame();
+    }
+  }
+}
+
+void keyReleased() {
+  if (keyCode == LEFT) left = false;
+  if (keyCode == RIGHT) right = false;
+}
+
+void resetGame() {
+  rabbitX = width / 2;
+  rabbitY = 0;
+  rabbitSpeedY = 0;
+  score = 0;
+  platforms.clear();
+  for (int i = 0; i < 5; i++) {
+    float newY = random(50, 150);
+    platforms.add(new Platform(random(0, width - platformWidth), newY));
+  }
+}
+
+void sortHighScores() {
+  highScores.sort((s1, s2) -> {
+    int score1 = Integer.parseInt(s1.split(": ")[1]);
+    int score2 = Integer.parseInt(s2.split(": ")[1]);
+    return Integer.compare(score2, score1);
+  });
+}
+
+class Platform {
+  float x, y;
+  int powerUpValue;
+
+  Platform(float x, float y) {
+    this.x = x;
+    this.y = y;
+    this.powerUpValue = (random(1) < 0.1) ? 1 : (random(1) < 0.05) ? 3 : 0;
+  }
+}
+
